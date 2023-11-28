@@ -45,8 +45,20 @@ void playGame(String text)
 //takes in an image and returns the text in the image
 String imageToString(Mat image)
 {
-    String text = "";
-    //IMPLEMENTATION GOES HERE
+    String text = "Invalid";
+
+    vector<vector<Point>> contours;
+    findContours(image, contours, RETR_LIST, CHAIN_APPROX_NONE);
+    
+    if (isContourConvex(contours[0])) {
+        cout << "Either scissors or paper" << endl;
+    }
+    else {
+        // TODO : Differentiate between scissors and paper
+        text = "rock";
+        cout << "rock" << endl;
+    }
+    
     return text;
 }
 
