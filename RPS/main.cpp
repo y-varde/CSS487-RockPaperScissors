@@ -50,15 +50,40 @@ String imageToString(Mat image)
     vector<vector<Point>> contours;
     findContours(image, contours, RETR_LIST, CHAIN_APPROX_NONE);
     
-    if (isContourConvex(contours[0])) {
-        cout << "Either scissors or paper" << endl;
+    // analyze contours
+    int fingers = 0;
+    for (int i = 0; i < contours.size(); i++) {
+
+        // find convexHull and defects
+        vector<Vec4i> defects;
+        vector<int> indeces;
+        vector<int> convHull;
+
+        convexHull(contours[i], convHull, false, false);
+        convexityDefects(contours[i], convHull, defects);
+
+        // use defects to find fingers
+        for (int j = 0; j < defects.size(); j++) {
+            // use distance defect
+            if (defects[j][3] > 10000) { // if gap is 1000, there is a finger in between
+                fingers++;
+            }
+        }
+    }
+
+    
+    if (fingers < 2) {
+        text = "rock";
+    }
+    else if (fingers < 5) {
+        text = "scissors";
     }
     else {
-        // TODO : Differentiate between scissors and paper
-        text = "rock";
-        cout << "rock" << endl;
+        text = "paper";
     }
-    
+
+    cout << "Your vote " << text << endl;
+
     return text;
 }
 
