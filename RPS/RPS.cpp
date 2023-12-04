@@ -11,6 +11,8 @@
 using namespace cv;
 using namespace std;
 
+RNG rng(12345);
+
 //play game
 //takes in the text from the image and plays rock paper scissors
 void playGame(String text)
@@ -44,13 +46,29 @@ void playGame(String text)
 }
 
 //image to string
-//takes in an image and returns the text in the image
+//takes in an image and returns the text in the image (rock, paper, scissors)
 String imageToString(Mat image)
 {
     String text = "Invalid";
 
     vector<vector<Point>> contours;
     findContours(image, contours, RETR_LIST, CHAIN_APPROX_NONE);
+
+    vector<vector<Point> >hull(contours.size());
+    for (size_t i = 0; i < contours.size(); i++)
+    {
+        convexHull(contours[i], hull[i]);
+    }
+
+    Mat drawing = Mat::zeros(image.size(), CV_8UC3);
+    for (size_t i = 0; i < contours.size(); i++)
+    {
+        Scalar color = Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
+        drawContours(drawing, contours, (int)i, color);
+        drawContours(drawing, hull, (int)i, color);
+    }
+    imshow("Hull demo", drawing);
+    waitKey(0);
 
     // analyze contours
     int fingers = 0;
@@ -67,11 +85,12 @@ String imageToString(Mat image)
         // use defects to find fingers
         for (int j = 0; j < defects.size(); j++) {
             // use distance defect
-            if (defects[j][3] > 10000) { // if gap is 1000, there is a finger in between
+            if (defects[j][3] > 10000 && defects[j][3] < 100000) { // if gap is 1000, there is a finger in between
                 fingers++;
             }
-        }
+        } 
     }
+    printf("Fingers detected: %d\n", fingers);
 
     if (fingers < 2) {
         text = "rock";
@@ -95,25 +114,55 @@ Mat processImage(Mat image)
     // Convert the image to grayscale
     Mat gray;
     cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+    imshow("Grayscale", gray);
+    waitKey(0);
 
     // Apply Gaussian blur to the grayscale image
     Mat blur;
     GaussianBlur(gray, blur, cv::Size(5, 5), 0);
-
-    // Apply Canny edge detection
-    Mat edges;
-    Canny(blur, edges, 50, 150);
-
-    // Dilate the edges
-    Mat dilatedEdges;
-    dilate(edges, dilatedEdges, Mat());
-
-    // Display the edge image
-    namedWindow("Edges", cv::WINDOW_NORMAL);
-    imshow("Edges", dilatedEdges);
+    imshow("Gaussian Blur", blur);
     waitKey(0);
 
-    return dilatedEdges;
+    //apply thresholding
+    Mat thresh;
+    threshold(blur, thresh, 0, 255, THRESH_BINARY_INV + THRESH_OTSU);
+    imshow("Threshold", thresh);
+    waitKey(0);
+
+    //find contours
+    vector<vector<Point>> contours;
+    findContours(thresh, contours, RETR_LIST, CHAIN_APPROX_NONE);
+
+    //get the hand contour (assume the largest contour is the hand)
+    int largestContourIndex = 0;
+    for (int i = 0; i < contours.size(); i++)
+    {
+        if (contourArea(contours[i]) > contourArea(contours[largestContourIndex]))
+        {
+            largestContourIndex = i;
+        }
+    }
+
+    //create a mask of the hand
+    Mat mask = Mat::zeros(image.size(), CV_8UC1);
+    drawContours(mask, contours, largestContourIndex, Scalar(255), FILLED);
+    imshow("Mask", mask);
+    waitKey(0);
+
+    //apply the mask to the image
+    Mat maskedImage;
+    image.copyTo(maskedImage, mask);
+    imshow("Masked Image", maskedImage);
+    waitKey(0);
+
+    // Dilate the hand
+    Mat dilated;
+    dilate(mask, dilated, Mat(), Point(-1, -1), 3);
+    imshow("Dilated", dilated);
+    waitKey(0);
+
+    //return the dilated image
+    return dilated;
 }
 
 //capture photo
@@ -163,9 +212,10 @@ int main(int argc, char* argv[])
             cout << "Thanks for playing!" << endl;
             playAgain = false;
         }
+
+        //close all windows
+        destroyAllWindows();
     }
 }
 
 
-
-    
