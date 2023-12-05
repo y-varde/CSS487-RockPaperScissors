@@ -239,24 +239,6 @@ Mat processImage(Mat image)
     imshow("Most Common Color", image);
     waitKey(0);*/
 
-
-    //haar cascade to detect hand
-    CascadeClassifier handCascade;
-    handCascade.load("hand.xml");
-
-    //detect hand
-    vector<Rect> hands;
-    handCascade.detectMultiScale(image, hands, 1.1, 2, 0, Size(30, 30));
-
-    //draw rectangle around hand
-    for (int i = 0; i < hands.size(); i++)
-    {
-        rectangle(image, hands[i], Scalar(0, 255, 0), 2);
-    }
-
-    imshow("Hand", image);
-    waitKey(0);
-
     //resize image to just the hand
     //image = image(hands[0]);
 
@@ -291,11 +273,59 @@ Mat processImage(Mat image)
 //capture photo
 Mat capturePhoto()
 {
+    // Load the hand cascade
+    CascadeClassifier hand_cascade;
+    hand_cascade.load(samples::findFile("hand.xml"));
+
+    //load the palm cascade
+    CascadeClassifier palm_cascade;
+    palm_cascade.load(samples::findFile("palm.xml"));
+
     VideoCapture cap(1);
     Mat frame;
     while (true)
     {
         cap >> frame;
+
+        std::vector<Rect> hand;
+        std::vector<Rect> palm;
+
+        // Detect hand
+        hand_cascade.detectMultiScale(frame, hand);
+        palm_cascade.detectMultiScale(frame, palm);
+
+        //Draw the rectangle that contains the top left of the left hand and the bottom right of the right hand
+        if (hand.size() > 0)
+        {
+            //detect all hands
+            for (int i = 0; i < hand.size(); i++)
+            {
+                //draw rectangle around hand
+                Point pt1(hand[i].x, hand[i].y);
+                Point pt2(hand[i].x + hand[i].width, hand[i].y + hand[i].height);
+                rectangle(frame, pt1, pt2, Scalar(0, 255, 0));
+            }
+
+            //resize image to just the hand
+            frame = frame(hand[0]);
+            //break;
+        }
+        else if (palm.size() > 0)
+        {
+            //detect all palms
+            for (int i = 0; i < palm.size(); i++)
+            {
+                //draw rectangle around palm
+                Point pt1(palm[i].x, palm[i].y);
+                Point pt2(palm[i].x + palm[i].width, palm[i].y + palm[i].height);
+                rectangle(frame, pt1, pt2, Scalar(0, 255, 0));
+            }
+
+            //resize image to just the palm
+            frame = frame(palm[0]);
+            //break;
+        }
+
         imshow("Press \"c\" to take a photo", frame);
         cout << endl;
         if (waitKey(1) == 'c')
