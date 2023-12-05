@@ -6,6 +6,7 @@
 #include <opencv2/core/matx.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
+#include <opencv2/objdetect.hpp>
 #include <iostream>
 
 using namespace cv;
@@ -107,10 +108,158 @@ String imageToString(Mat image)
     return text;
 }
 
+//computeColorHistogram(Mat foreground, int size);
+//compute the color histogram of the foreground image
+//foreground - the foreground image
+//size - the number of buckets in each dimension of the histogram
+//Precondition: foreground is a 3D matrix of integers
+//Postcondition: returns the color histogram of the foreground image
+Mat computeColorHistogram(Mat foreground, int size)
+{
+    // create an array of the histogram dimensions
+// size is a constant - the # of buckets in each dimension
+    int dims[] = { size, size, size };
+    // create 3D histogram of integers initialized to zero	
+    Mat hist(3, dims, CV_32S, Scalar::all(0));
+
+    //compute the bucket size
+    int bucketSize = 256 / size;
+
+    //loop through the foreground image and assign the pixel values to the histogram
+    for (int i = 0; i < foreground.rows; i++)
+    {
+        for (int j = 0; j < foreground.cols; j++)
+        {
+            // get the pixel value for each channel
+            Vec3b pixel = foreground.at<Vec3b>(i, j);
+            int blue = pixel[0];
+            int green = pixel[1];
+            int red = pixel[2];
+
+            // compute the bucket for each channel and increment the histogram accordingly
+            int r = red / bucketSize;
+            int g = green / bucketSize;
+            int b = blue / bucketSize;
+            hist.at<int>(b, g, r)++;
+        }
+    }
+
+    //return the histogram
+    return hist;
+}
+
+//computeMostCommonColor(Mat hist, int size);
+//compute the most common color in the foreground image using the color histogram
+//hist - the color histogram of the foreground image
+//size - the number of buckets in each dimension of the histogram
+//Precondition: hist is a 3D matrix of integers
+//Postcondition: returns the most common color in the foreground image
+Vec3b computeMostCommonColor(Mat hist, int size)
+{
+    //initialize the max value and index
+    int max = 0;
+    int maxIndex = 0;
+
+    //initialize the RGB indexes
+    int r = 0;
+    int g = 0;
+    int b = 0;
+
+    //loop through the histogram and find the bucket with the highest value
+    for (int i = 0; i < size; i++)
+    {
+        for (int j = 0; j < size; j++)
+        {
+            for (int k = 0; k < size; k++)
+            {
+                int val = hist.at<int>(i, j, k);
+
+                //update max value and RGB indexes 
+                if (val > max)
+                {
+                    max = hist.at<int>(i, j, k);
+                    r = k;
+                    g = j;
+                    b = i;
+                }
+            }
+        }
+    }
+
+    //compute the RGB values of the most common color
+    int bucketSize = 256 / size;
+    int cRed = r * bucketSize + bucketSize / 2;
+    int cGreen = g * bucketSize + bucketSize / 2;
+    int cBlue = b * bucketSize + bucketSize / 2;
+    return Vec3b(cBlue, cGreen, cRed);
+}
+
 //process image
 //converts image to an edge image 
 Mat processImage(Mat image)
 {
+
+    /*
+    int size = 4;
+    Mat hist = computeColorHistogram(image, size);
+    Vec3b commonColor = computeMostCommonColor(hist, size);
+
+    cout << "Most common color: " << commonColor << endl;
+    
+    //replace all pixels that are not the most common color with black
+    for (int i = 0; i < image.rows; i++)
+    {
+        for (int j = 0; j < image.cols; j++)
+        {
+            // get the pixel value for each channel
+            Vec3b pixel = image.at<Vec3b>(i, j);
+            int blue = pixel[0];
+            int green = pixel[1];
+            int red = pixel[2];
+
+            //get the color of the most common color
+            int cBlue = commonColor[0];
+            int cGreen = commonColor[1];
+            int cRed = commonColor[2];
+
+            //compute the distance between the pixel and the most common color
+            int rDist = abs(red - cRed);
+            int gDist = abs(green - cGreen);
+            int bDist = abs(blue - cBlue);
+
+            //if the distance is greater than 50, or the pixel is within 50 from white, set the pixel to black
+            bool isWhite = (red > 200 && green > 200 && blue > 200);
+            if (rDist > 50 || gDist > 50 || bDist > 50 || (isWhite))
+            {
+                image.at<Vec3b>(i, j) = Vec3b(0, 0, 0);
+            }
+        }
+    }
+
+    imshow("Most Common Color", image);
+    waitKey(0);*/
+
+
+    //haar cascade to detect hand
+    CascadeClassifier handCascade;
+    handCascade.load("hand.xml");
+
+    //detect hand
+    vector<Rect> hands;
+    handCascade.detectMultiScale(image, hands, 1.1, 2, 0, Size(30, 30));
+
+    //draw rectangle around hand
+    for (int i = 0; i < hands.size(); i++)
+    {
+        rectangle(image, hands[i], Scalar(0, 255, 0), 2);
+    }
+
+    imshow("Hand", image);
+    waitKey(0);
+
+    //resize image to just the hand
+    //image = image(hands[0]);
+
     // Convert the image to grayscale
     Mat gray;
     cvtColor(image, gray, cv::COLOR_BGR2GRAY);
@@ -123,41 +272,15 @@ Mat processImage(Mat image)
     imshow("Gaussian Blur", blur);
     waitKey(0);
 
-    //apply thresholding
-    Mat thresh;
-    threshold(blur, thresh, 0, 255, THRESH_BINARY_INV + THRESH_OTSU);
-    imshow("Threshold", thresh);
-    waitKey(0);
-
-    //find contours
-    vector<vector<Point>> contours;
-    findContours(thresh, contours, RETR_LIST, CHAIN_APPROX_NONE);
-
-    //get the hand contour (assume the largest contour is the hand)
-    int largestContourIndex = 0;
-    for (int i = 0; i < contours.size(); i++)
-    {
-        if (contourArea(contours[i]) > contourArea(contours[largestContourIndex]))
-        {
-            largestContourIndex = i;
-        }
-    }
-
-    //create a mask of the hand
-    Mat mask = Mat::zeros(image.size(), CV_8UC1);
-    drawContours(mask, contours, largestContourIndex, Scalar(255), FILLED);
-    imshow("Mask", mask);
-    waitKey(0);
-
-    //apply the mask to the image
-    Mat maskedImage;
-    image.copyTo(maskedImage, mask);
-    imshow("Masked Image", maskedImage);
+    //get edge image
+    Mat edges;
+    Canny(blur, edges, 0, 50);
+    imshow("Edges", edges);
     waitKey(0);
 
     // Dilate the hand
     Mat dilated;
-    dilate(mask, dilated, Mat(), Point(-1, -1), 3);
+    dilate(edges, dilated, Mat(), Point(-1, -1), 3);
     imshow("Dilated", dilated);
     waitKey(0);
 
@@ -188,6 +311,27 @@ Mat capturePhoto()
 //main for rock paper scissors
 int main(int argc, char* argv[])
 {
+    //if user has provided an image, use that image
+    if (argc > 1)
+    {
+        //read in image
+        Mat image = imread(argv[1]);
+
+        //process image
+        image = processImage(image);
+
+        //get text from image (rock, paper, scissors)
+        String text = imageToString(image);
+
+        //play game
+        playGame(text);
+
+        //close all windows
+        destroyAllWindows();
+        return 0;
+    }
+
+    //use webcam
     bool playAgain = true;
     while (playAgain)
     {
