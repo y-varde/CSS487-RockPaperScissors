@@ -88,7 +88,7 @@ String imageToString(Mat image)
             if (defects[j][3] > 10000 && defects[j][3] < 100000) { // if gap is 1000, there is a finger in between
                 fingers++;
             }
-        } 
+        }
     }
     printf("Fingers detected: %d\n", fingers);
 
@@ -217,5 +217,3 @@ int main(int argc, char* argv[])
         destroyAllWindows();
     }
 }
-
-
