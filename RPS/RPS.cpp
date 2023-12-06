@@ -13,13 +13,15 @@ using namespace cv;
 using namespace std;
 
 RNG rng(12345);
+int ROCK_GUESSES = 0;
+int PAPER_GUESSES = 0;
+int SCISSOR_GUESSES = 0;
 
 //play game
 //takes in the text from the image and plays rock paper scissors
 void playGame(String text)
 {
-    String choices[3] = { "rock", "paper", "scissors" };
-    String aiChoice = choices[rand() % 3];
+    String aiChoice = getAiChoice();
     cout << "AI chose " << aiChoice << endl;
 
     String userChoice = "";
@@ -44,6 +46,39 @@ void playGame(String text)
     {
         cout << "AI wins!" << endl;
     }
+}
+
+/**
+* Preconditions: This method should only be called to set the AI's choice
+* Postcondition: Returns the AI's choice as a string
+* 
+* For the first 3 rounds of the game, the Ai will choose between rock, paper, or scissors 
+*   at random. After the 3 rounds, the program will use the user's previous guesses to 
+*   determine what to play. It will choose the opposite of what the user has chosen the least.
+* Ex. if the user has mostly played rock and paper, the program will guess that they will choose
+*   scissors next, and play rock.
+*/
+String getAiChoice() {
+    // choose randomly for first 3 games
+    if (ROCK_GUESSES + PAPER_GUESSES + SCISSOR_GUESSES <= 3) {
+        String choices[3] = { "rock", "paper", "scissors" };
+        return choices[rand() % 3];
+    }
+
+
+    String choice = "rock";
+    int leastChosen = min(ROCK_GUESSES, min(PAPER_GUESSES, SCISSOR_GUESSES));
+
+    // play opposite of the least chosen
+    if (ROCK_GUESSES == leastChosen) {
+        choice = "paper";
+    }
+
+    if (PAPER_GUESSES == leastChosen) {
+        choice = "scissors";
+    }
+
+    return choice;  
 }
 
 //image to string
@@ -95,12 +130,15 @@ String imageToString(Mat image)
 
     if (fingers < 2) {
         text = "rock";
+        ROCK_GUESSES++;
     }
     else if (fingers < 5) {
         text = "scissors";
+        SCISSOR_GUESSES++;
     }
     else {
         text = "paper";
+        PAPER_GUESSES++;
     }
 
     cout << "You chose " << text << endl;
