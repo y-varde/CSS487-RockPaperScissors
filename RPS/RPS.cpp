@@ -281,7 +281,16 @@ Mat capturePhoto()
     CascadeClassifier palm_cascade;
     palm_cascade.load(samples::findFile("palm.xml"));
 
-    VideoCapture cap(1);
+    cout << "Will you be using your front or back camera?" << endl;
+    int cam = 0;
+    String choice;
+    cin >> choice;
+
+    if (choice == "b") {
+        cam = 1;
+    }
+
+    VideoCapture cap(cam);
     Mat frame;
     while (true)
     {
