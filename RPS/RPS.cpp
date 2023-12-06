@@ -198,49 +198,9 @@ Vec3b computeMostCommonColor(Mat hist, int size)
 //converts image to an edge image 
 Mat processImage(Mat image)
 {
-
-    /*
-    int size = 4;
-    Mat hist = computeColorHistogram(image, size);
-    Vec3b commonColor = computeMostCommonColor(hist, size);
-
-    cout << "Most common color: " << commonColor << endl;
-    
-    //replace all pixels that are not the most common color with black
-    for (int i = 0; i < image.rows; i++)
-    {
-        for (int j = 0; j < image.cols; j++)
-        {
-            // get the pixel value for each channel
-            Vec3b pixel = image.at<Vec3b>(i, j);
-            int blue = pixel[0];
-            int green = pixel[1];
-            int red = pixel[2];
-
-            //get the color of the most common color
-            int cBlue = commonColor[0];
-            int cGreen = commonColor[1];
-            int cRed = commonColor[2];
-
-            //compute the distance between the pixel and the most common color
-            int rDist = abs(red - cRed);
-            int gDist = abs(green - cGreen);
-            int bDist = abs(blue - cBlue);
-
-            //if the distance is greater than 50, or the pixel is within 50 from white, set the pixel to black
-            bool isWhite = (red > 200 && green > 200 && blue > 200);
-            if (rDist > 50 || gDist > 50 || bDist > 50 || (isWhite))
-            {
-                image.at<Vec3b>(i, j) = Vec3b(0, 0, 0);
-            }
-        }
-    }
-
-    imshow("Most Common Color", image);
-    waitKey(0);*/
-
-    //resize image to just the hand
-    //image = image(hands[0]);
+    //display the original image
+    imshow("Original", image);
+    waitKey(0);
 
     // Convert the image to grayscale
     Mat gray;
@@ -260,14 +220,8 @@ Mat processImage(Mat image)
     imshow("Edges", edges);
     waitKey(0);
 
-    // Dilate the hand
-    Mat dilated;
-    dilate(edges, dilated, Mat(), Point(-1, -1), 3);
-    imshow("Dilated", dilated);
-    waitKey(0);
-
     //return the dilated image
-    return dilated;
+    return edges;
 }
 
 //capture photo
@@ -294,6 +248,8 @@ Mat capturePhoto()
         hand_cascade.detectMultiScale(frame, hand);
         palm_cascade.detectMultiScale(frame, palm);
 
+        Point pt1, pt2;
+
         //Draw the rectangle that contains the top left of the left hand and the bottom right of the right hand
         if (hand.size() > 0)
         {
@@ -301,14 +257,10 @@ Mat capturePhoto()
             for (int i = 0; i < hand.size(); i++)
             {
                 //draw rectangle around hand
-                Point pt1(hand[i].x, hand[i].y);
-                Point pt2(hand[i].x + hand[i].width, hand[i].y + hand[i].height);
+                pt1 = Point(hand[i].x, hand[i].y);
+                pt2 = Point(hand[i].x + hand[i].width, hand[i].y + hand[i].height);
                 rectangle(frame, pt1, pt2, Scalar(0, 255, 0));
             }
-
-            //resize image to just the hand
-            frame = frame(hand[0]);
-            //break;
         }
         else if (palm.size() > 0)
         {
@@ -316,20 +268,17 @@ Mat capturePhoto()
             for (int i = 0; i < palm.size(); i++)
             {
                 //draw rectangle around palm
-                Point pt1(palm[i].x, palm[i].y);
-                Point pt2(palm[i].x + palm[i].width, palm[i].y + palm[i].height);
-                rectangle(frame, pt1, pt2, Scalar(0, 255, 0));
+                pt1 = Point(palm[i].x, palm[i].y);
+                pt2 = Point(palm[i].x + palm[i].width, palm[i].y + palm[i].height);
+                rectangle(frame, pt1, pt2, Scalar(0, 0, 255));
             }
-
-            //resize image to just the palm
-            frame = frame(palm[0]);
-            //break;
         }
 
         imshow("Press \"c\" to take a photo", frame);
         cout << endl;
         if (waitKey(1) == 'c')
         {
+            frame = frame(Rect(pt1, pt2));
             break;
         }
     }
