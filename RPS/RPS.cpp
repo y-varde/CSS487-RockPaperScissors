@@ -198,9 +198,30 @@ Vec3b computeMostCommonColor(Mat hist, int size)
 //converts image to an edge image 
 Mat processImage(Mat image)
 {
-    //display the original image
-    imshow("Original", image);
+    //haar cascade to detect hand
+    //taken from https://github.com/Balaje/OpenCV/blob/master/haarcascades/hand.xml
+    CascadeClassifier handCascade;
+    handCascade.load("hand.xml");
+
+    //detect hand
+    vector<Rect> hands;
+    handCascade.detectMultiScale(image, hands, 1.1, 2, 0, Size(30, 30));
+
+    //draw rectangle around hand
+    for (int i = 0; i < hands.size(); i++)
+    {
+        rectangle(image, hands[i], Scalar(0, 255, 0), 2);
+    }
+
+    imshow("Hand", image);
     waitKey(0);
+
+    //resize image to just the hand
+    if (hands.size() > 0)
+    {
+        image = image(hands[0]);
+        imshow("Hand", image);
+    }
 
     // Convert the image to grayscale
     Mat gray;
@@ -220,102 +241,63 @@ Mat processImage(Mat image)
     imshow("Edges", edges);
     waitKey(0);
 
+    // Dilate the hand
+    Mat dilated;
+    dilate(edges, dilated, Mat(), Point(-1, -1), 3);
+    imshow("Dilated", dilated);
+    waitKey(0);
+
     //return the dilated image
-    return edges;
+    return dilated;
 }
 
 //capture photo
 Mat capturePhoto()
 {
-    // Load the hand cascade
-    CascadeClassifier hand_cascade;
-    hand_cascade.load(samples::findFile("hand.xml"));
-
-    //load the palm cascade
-    CascadeClassifier palm_cascade;
-    palm_cascade.load(samples::findFile("palm.xml"));
-
     VideoCapture cap(1);
     Mat frame;
     while (true)
     {
         cap >> frame;
-
-        std::vector<Rect> hand;
-        std::vector<Rect> palm;
-
-        // Detect hand
-        hand_cascade.detectMultiScale(frame, hand);
-        palm_cascade.detectMultiScale(frame, palm);
-
-        Point pt1, pt2;
-
-        //Draw the rectangle that contains the top left of the left hand and the bottom right of the right hand
-        if (hand.size() > 0)
-        {
-            //detect all hands
-            for (int i = 0; i < hand.size(); i++)
-            {
-                //draw rectangle around hand
-                pt1 = Point(hand[i].x, hand[i].y);
-                pt2 = Point(hand[i].x + hand[i].width, hand[i].y + hand[i].height);
-                rectangle(frame, pt1, pt2, Scalar(0, 255, 0));
-            }
-        }
-        else if (palm.size() > 0)
-        {
-            //detect all palms
-            for (int i = 0; i < palm.size(); i++)
-            {
-                //draw rectangle around palm
-                pt1 = Point(palm[i].x, palm[i].y);
-                pt2 = Point(palm[i].x + palm[i].width, palm[i].y + palm[i].height);
-                rectangle(frame, pt1, pt2, Scalar(0, 0, 255));
-            }
-        }
-
         imshow("Press \"c\" to take a photo", frame);
         cout << endl;
+
+        //exit when user clicks on the x button
+        if (waitKey(1) == 27)
+        {
+            break;
+        }
+
+        //take photo when c is pressed
         if (waitKey(1) == 'c')
         {
-            frame = frame(Rect(pt1, pt2));
+            cap.release();
+            destroyAllWindows();
+            return frame;
             break;
         }
     }
-    cap.release();
-    destroyAllWindows();
-    return frame;
 }
 
 //main for rock paper scissors
 int main(int argc, char* argv[])
 {
-    //if user has provided an image, use that image
-    if (argc > 1)
-    {
-        //read in image
-        Mat image = imread(argv[1]);
-
-        //process image
-        image = processImage(image);
-
-        //get text from image (rock, paper, scissors)
-        String text = imageToString(image);
-
-        //play game
-        playGame(text);
-
-        //close all windows
-        destroyAllWindows();
-        return 0;
-    }
-
     //use webcam
     bool playAgain = true;
+    bool firstTime = true;
     while (playAgain)
     {
-        //capture photo
-        Mat image = capturePhoto();
+        Mat image;
+        if (argc > 1 && firstTime)
+        {
+            //read in image
+            image = imread(argv[1]);
+            firstTime = false;
+        }
+        else {
+            //capture photo
+            image = capturePhoto();
+        }
 
         //process image
         image = processImage(image);
