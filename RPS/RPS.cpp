@@ -17,6 +17,39 @@ int ROCK_GUESSES = 0;
 int PAPER_GUESSES = 0;
 int SCISSOR_GUESSES = 0;
 
+/**
+* Preconditions: This method should only be called to set the AI's choice
+* Postcondition: Returns the AI's choice as a string
+*
+* For the first 3 rounds of the game, the Ai will choose between rock, paper, or scissors
+*   at random. After the 3 rounds, the program will use the user's previous guesses to
+*   determine what to play. It will choose the opposite of what the user has chosen the least.
+* Ex. if the user has mostly played rock and paper, the program will guess that they will choose
+*   scissors next, and play rock.
+*/
+String getAiChoice() {
+    // choose randomly for first 3 games
+    if (ROCK_GUESSES + PAPER_GUESSES + SCISSOR_GUESSES <= 3) {
+        String choices[3] = { "rock", "paper", "scissors" };
+        return choices[rand() % 3];
+    }
+
+
+    String choice = "rock";
+    int leastChosen = min(ROCK_GUESSES, min(PAPER_GUESSES, SCISSOR_GUESSES));
+
+    // play opposite of the least chosen
+    if (ROCK_GUESSES == leastChosen) {
+        choice = "paper";
+    }
+
+    if (PAPER_GUESSES == leastChosen) {
+        choice = "scissors";
+    }
+
+    return choice;
+}
+
 //play game
 //takes in the text from the image and plays rock paper scissors
 void playGame(String text)
@@ -46,39 +79,12 @@ void playGame(String text)
     {
         cout << "AI wins!" << endl;
     }
-}
 
-/**
-* Preconditions: This method should only be called to set the AI's choice
-* Postcondition: Returns the AI's choice as a string
-* 
-* For the first 3 rounds of the game, the Ai will choose between rock, paper, or scissors 
-*   at random. After the 3 rounds, the program will use the user's previous guesses to 
-*   determine what to play. It will choose the opposite of what the user has chosen the least.
-* Ex. if the user has mostly played rock and paper, the program will guess that they will choose
-*   scissors next, and play rock.
-*/
-String getAiChoice() {
-    // choose randomly for first 3 games
-    if (ROCK_GUESSES + PAPER_GUESSES + SCISSOR_GUESSES <= 3) {
-        String choices[3] = { "rock", "paper", "scissors" };
-        return choices[rand() % 3];
-    }
-
-
-    String choice = "rock";
-    int leastChosen = min(ROCK_GUESSES, min(PAPER_GUESSES, SCISSOR_GUESSES));
-
-    // play opposite of the least chosen
-    if (ROCK_GUESSES == leastChosen) {
-        choice = "paper";
-    }
-
-    if (PAPER_GUESSES == leastChosen) {
-        choice = "scissors";
-    }
-
-    return choice;  
+    //print out the number of times each choice was chosen
+    cout << endl;
+    cout << "Rock guesses: " << ROCK_GUESSES << endl;
+    cout << "Paper guesses: " << PAPER_GUESSES << endl;
+    cout << "Scissors guesses: " << SCISSOR_GUESSES << endl;
 }
 
 //image to string
@@ -241,33 +247,6 @@ Mat processImage(Mat image)
     CascadeClassifier handCascade;
     handCascade.load("hand.xml");
 
-    /*
-    int size = 4;
-    Mat hist = computeColorHistogram(image, size);
-    Vec3b commonColor = computeMostCommonColor(hist, size);
-
-    cout << "Most common color: " << commonColor << endl;
-    
-    //replace all pixels that are not the most common color with black
-    for (int i = 0; i < image.rows; i++)
-    {
-        for (int j = 0; j < image.cols; j++)
-        {
-            // get the pixel value for each channel
-            Vec3b pixel = image.at<Vec3b>(i, j);
-            int blue = pixel[0];
-            int green = pixel[1];
-            int red = pixel[2];
-
-            //get the color of the most common color
-            int cBlue = commonColor[0];
-            int cGreen = commonColor[1];
-            int cRed = commonColor[2];
-
-            //compute the distance between the pixel and the most common color
-            int rDist = abs(red - cRed);
-            int gDist = abs(green - cGreen);
-            int bDist = abs(blue - cBlue);
     //detect hand
     vector<Rect> hands;
     handCascade.detectMultiScale(image, hands, 1.1, 2, 0, Size(30, 30));
@@ -277,17 +256,9 @@ Mat processImage(Mat image)
     {
         rectangle(image, hands[i], Scalar(0, 255, 0), 2);
     }
-            //if the distance is greater than 50, or the pixel is within 50 from white, set the pixel to black
-            bool isWhite = (red > 200 && green > 200 && blue > 200);
-            if (rDist > 50 || gDist > 50 || bDist > 50 || (isWhite))
-            {
-                image.at<Vec3b>(i, j) = Vec3b(0, 0, 0);
-            }
-        }
-    }
 
-    imshow("Most Common Color", image);
-    waitKey(0);*/
+    imshow("Hand", image);
+    waitKey(0);
 
     //resize image to just the hand
     if (hands.size() > 0)
@@ -295,7 +266,6 @@ Mat processImage(Mat image)
         image = image(hands[0]);
         imshow("Hand", image);
     }
-    //image = image(hands[0]);
 
     // Convert the image to grayscale
     Mat gray;
@@ -328,24 +298,7 @@ Mat processImage(Mat image)
 //capture photo
 Mat capturePhoto()
 {
-    // Load the hand cascade
-    CascadeClassifier hand_cascade;
-    hand_cascade.load(samples::findFile("hand.xml"));
-
-    //load the palm cascade
-    CascadeClassifier palm_cascade;
-    palm_cascade.load(samples::findFile("palm.xml"));
-
-    cout << "Will you be using your front or back camera?" << endl;
-    int cam = 0;
-    String choice;
-    cin >> choice;
-
-    if (choice == "b") {
-        cam = 1;
-    }
-
-    VideoCapture cap(cam);
+    VideoCapture cap(1);
     Mat frame;
     while (true)
     {
@@ -353,15 +306,7 @@ Mat capturePhoto()
         imshow("Press \"c\" to take a photo", frame);
         cout << endl;
 
-        //exit when user clicks on the x button
-        if (waitKey(1) == 27)
-        {
-            break;
-        }
-
         //take photo when c is pressed
-        imshow("Press \"c\" to take a photo", frame);
-        cout << endl;
         if (waitKey(1) == 'c')
         {
             cap.release();
@@ -370,37 +315,11 @@ Mat capturePhoto()
             break;
         }
     }
-            break;
-        }
-    }
-    cap.release();
-    destroyAllWindows();
-    return frame;
 }
 
 //main for rock paper scissors
 int main(int argc, char* argv[])
 {
-    //if user has provided an image, use that image
-    if (argc > 1)
-    {
-        //read in image
-        Mat image = imread(argv[1]);
-
-        //process image
-        image = processImage(image);
-
-        //get text from image (rock, paper, scissors)
-        String text = imageToString(image);
-
-        //play game
-        playGame(text);
-
-        //close all windows
-        destroyAllWindows();
-        return 0;
-    }
-
     //use webcam
     bool playAgain = true;
     bool firstTime = true;
